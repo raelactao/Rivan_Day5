@@ -1,0 +1,261 @@
+
+COREBABA
+conf t
+ ip routing
+ end
+conf t
+ hostname coreBaba-92
+ enable secret pass
+ service password-encryption
+ no logging console
+ no ip domain-lookup
+ line cons 0
+  password pass
+  login
+  exec-timeout 0 0
+ line vty 0 14
+  password pass
+  login
+  exec-timeout 0 0
+ int gi 0/1
+  no shut
+  no switchport
+  ip add 10.92.92.4 255.255.255.0
+ int vlan 1
+  no shut
+  ip add 10.92.1.4 255.255.255.0
+  desc DEFAULT-VLAN
+ int vlan 10
+  no shut
+  ip add 10.92.10.4 255.255.255.0
+  desc WIFI-VLAN
+ int vlan 50
+  no shut
+  ip add 10.92.50.4 255.255.255.0
+  desc CCTV-VLAN
+ int vlan 100
+  no shut
+  ip add 10.92.100.4 255.255.255.0
+  desc VOICE-VLAN
+ end
+
+!@dhcp
+conf t
+ ip dhcp excluded-add 10.92.1.1 10.92.1.100
+ ip dhcp excluded-add 10.92.10.1 10.92.10.100
+ ip dhcp excluded-add 10.92.50.1 10.92.50.100
+ ip dhcp excluded-add 10.92.100.1 10.92.100.100
+
+ ip dhcp pool POOLDATA
+  network 10.92.1.0 255.255.255.0
+  default-router 10.92.1.4
+  domain-name MGMTDATA.COM
+  dns-server 10.92.1.10
+ ip dhcp pool POOLWIFI
+  network 10.92.10.0 255.255.255.0
+  default-router 10.92.10.4
+  domain-name WIFIDATA.COM
+  dns-server 10.92.1.10
+  option 43 ip 10.92.10.92
+ ip dhcp pool POOLCCTV
+  network 10.92.50.0 255.255.255.0
+  default-router 10.92.50.4
+  domain-name CCTVDATA.COM
+  dns-server 10.92.1.10
+ ip dhcp pool POOLVOICE
+  network 10.92.100.0 255.255.255.0
+  default-router 10.92.100.4
+  domain-name VOICEDATA.COM
+  dns-server 10.92.1.10
+  option 150 ip 10.92.100.8
+ end
+
+!@switchport
+conf t
+ vlan 10
+  name WIFIVLAN
+ vlan 50
+  name CCTVVLAN
+ vlan 100
+  name VOICEVLAN
+ int fa 0/2
+  switchport mode access
+  switchport access vlan 10
+ int fa 0/4
+  switchport mode access
+  switchport access vlan 10
+ int fa 0/6
+  switchport mode access
+  switchport access vlan 50
+ int fa 0/8
+  switchport mode access
+  switchport access vlan 50
+ int fa 0/3
+  switchport mode access
+  switchport access vlan 100
+ int fa 0/5
+  switchport mode access
+  switchport voice vlan 100
+  switchport access vlan 1
+  mls qos trust device cisco-phone
+ int fa 0/7
+  switchport mode access
+  switchport voice vlan 100
+  switchport access vlan 1
+  mls qos trust device cisco-phone
+ end
+ 
+!@ospf routing corebaba
+ conf t
+  router ospf 1
+   router-id 10.92.92.4
+   network 10.92.0.0 0.0.255.255 area 0
+  int gi 0/1
+   ip ospf network point-to-point
+   end
+
+------------------------------------------
+
+
+!@CUCM
+
+
+conf t
+ hostname CUCM-92
+ enable secret pass
+ service password-encryption
+ no logging console
+ no ip domain-lookup
+ line cons 0
+  password pass
+  login
+  exec-timeout 0 0
+ line vty 0 14
+  password pass
+  login
+  exec-timeout 0 0
+ int fa 0/0
+  no shut
+  ip add 10.92.100.8 255.255.255.0
+ end
+
+!@ospf routing CUCM
+conf t
+ router ospf 1
+  router-id 10.92.100.8
+  network 10.92.100.0 0.0.0.255 area 0
+  end
+
+
+----------------------------------------------
+!@EDGE
+
+conf t
+ hostname EDGE-92
+ enable secret pass
+ service password-encryption
+ no logging console
+ no ip domain-lookup
+ line cons 0
+  password pass
+  login
+  exec-timeout 0 0
+ line vty 0 14
+  password pass
+  login
+  exec-timeout 0 0
+ int gi 0/0/0
+  no shut
+  ip add 10.92.92.1 255.255.255.0
+  desc INSIDE
+ int gi 0/0/1
+  no shut
+  ip add 200.0.0.92 255.255.255.0
+  desc OUTSIDE
+ int loopback 0
+  ip add 92.0.0.1 255.255.255.255
+  desc VIRTUALIP
+ end
+
+!@ospf routing EDGE
+conf t
+ router ospf 1
+  router-id 92.0.0.1
+  network 200.0.0.0 0.0.0.255 area 0
+  network 10.92.92.0 0.0.0.255 area 0
+  network 92.0.0.1 0.0.0.0 area 0
+ int gi 0/0/0
+  ip ospf network point-to-point
+  end
+
+-----------------------------------------
+
+WONDER WOMAN 
+- needs to be done correctly
+ex of mistake: connecting coretaas to itself with 1 cable via fa0/5 and fa0/7
+
+
+removing error log:
+
+!@CoreTAAS
+conf t
+ int range fa0/5, fa0/7
+  shut
+  no shut
+  end
+sh int status err 
+!will clear error log and frozen amber light
+!basically restarting port?
+
+---------------------------------------------------------------
+
+FORTINET config 
+
+SecureCRT
+
+config system admin
+ edit admin
+  set accprofile super_admin
+  set vdom root
+  set password C1sc0123
+  next
+ edit rae
+  set accprofile super_admin
+  set vdom root
+  set password pass
+  end
+show system rae
+
+
+another way to setup ospf:
+
+conf t
+ router ospf 1
+  router-id 4.4.4.4
+  exit
+ int range e1/0-1,e3/3
+  ip ospf 1 area 0
+ int e3/3
+  ip ospf network point-to-point
+  end
+sh ip ospf neigh
+
+
+
+
+!@P1
+
+conf t
+ ip domain lookup
+ ip name-server 8.8.8.8
+ end
+ping ip google.com
+ping ip www.rivanit.com
+
+
+@CMD 
+route add 10.2.1.101 mask 255.255.255.255 208.8.8.200
+ping 10.2.1.101
+
+
+
